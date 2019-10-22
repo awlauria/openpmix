@@ -371,6 +371,7 @@ PMIX_CLASS_DECLARATION(pmix_shift_caddy_t);
 typedef struct {
     pmix_list_item_t super;
     pmix_event_t ev;
+    pmix_event_t *_ev;
     pmix_lock_t lock;
     bool checked;
     int status;

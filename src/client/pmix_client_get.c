@@ -207,7 +207,11 @@ PMIX_EXPORT pmix_status_t PMIx_Get_nb(const pmix_proc_t *proc, const pmix_key_t 
     cb->ninfo = ninfo;
     cb->cbfunc.valuefn = cbfunc;
     cb->cbdata = cbdata;
-    PMIX_THREADSHIFT(cb, _getnbfn);
+    cb->_ev = pmix_event_new(pmix_globals.evbase, -1, EV_WRITE, _getnbfn, cb);
+    PMIX_POST_OBJECT(cb);
+    pmix_event_active(cb->_ev, EV_WRITE, 1);
+
+//    PMIX_THREADSHIFT(cb, _getnbfn);
 
     return PMIX_SUCCESS;
 }
@@ -779,5 +783,6 @@ static void _getnbfn(int fd, short flags, void *cbdata)
     /* we made a lot of changes to cb, so ensure they get
      * written out before we return */
     PMIX_POST_OBJECT(cb);
+    event_del(cb->_ev);
     return;
 }

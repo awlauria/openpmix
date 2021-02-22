@@ -30,12 +30,11 @@ headers += \
 	atomics/sys/atomic.h \
 	atomics/sys/atomic_impl.h \
 	atomics/sys/timer.h \
-    atomics/sys/cma.h \
-    atomics/sys/atomic_stdc.h
+	atomics/sys/cma.h \
+	atomics/sys/atomic_stdc.h
 
 include atomics/sys/x86_64/Makefile.include
 include atomics/sys/arm/Makefile.include
 include atomics/sys/arm64/Makefile.include
 include atomics/sys/ia32/Makefile.include
-include atomics/sys/powerpc/Makefile.include
 include atomics/sys/gcc_builtin/Makefile.include

@@ -79,10 +79,6 @@ BEGIN_C_DECLS
 #include "src/atomics/sys/arm64/timer.h"
 #elif PMIX_ASSEMBLY_ARCH == PMIX_IA32
 #include "src/atomics/sys/ia32/timer.h"
-#elif PMIX_ASSEMBLY_ARCH == PMIX_POWERPC32
-#include "src/atomics/sys/powerpc/timer.h"
-#elif PMIX_ASSEMBLY_ARCH == PMIX_POWERPC64
-#include "src/atomics/sys/powerpc/timer.h"
 #endif
 
 #ifndef DOXYGEN

@@ -164,7 +164,7 @@ enum {
  *********************************************************************/
 #if defined(DOXYGEN)
 /* don't include system-level gorp when generating doxygen files */
-#elif PMIX_ASSEMBLY_BUILTIN == PMIX_BUILTIN_GCC
+#elif PMIX_ASSEMBLY_BUILTIN == PMIX_BUILTIN_GCC || PMIX_ASSEMBLY_ARCH == PMIX_POWERPC32 || PMIX_ASSEMBLY_ARCH == PMIX_POWERPC64
 #include "src/atomics/sys/gcc_builtin/atomic.h"
 #elif PMIX_ASSEMBLY_ARCH == PMIX_X86_64
 #include "src/atomics/sys/x86_64/atomic.h"

@@ -52,14 +52,27 @@ AC_DEFUN([PMIX_PROG_CC_C11_HELPER],[
     PMIX_CC_HELPER([if $CC $1 supports C11 _Thread_local], [pmix_prog_cc_c11_helper__Thread_local_available],
                    [],[[static _Thread_local int  foo = 1;++foo;]])
 
+    PMIX_CC_HELPER([if $CC $1 has stdatomic.h], [pmix_prog_cc_c11_helper_atomic_has_stdatomic_h],
+                   [[#include <stdatomic.h>]], [])
+    pmix_stdatomic_hdr=""
+    if test $pmix_prog_cc_c11_helper_atomic_has_stdatomic_h -eq 1; then
+        pmix_stdatomic_hdr="#include<stdatomic.h>"
+    fi
+
     PMIX_CC_HELPER([if $CC $1 supports C11 atomic variables], [pmix_prog_cc_c11_helper_atomic_var_available],
-                   [[#include <stdatomic.h>]], [[static atomic_long foo = 1;++foo;]])
+                   [[$pmix_stdatomic_hdr]], [[static atomic_long foo = 1;++foo;]])
 
     PMIX_CC_HELPER([if $CC $1 supports C11 _Atomic keyword], [pmix_prog_cc_c11_helper__Atomic_available],
-                   [[#include <stdatomic.h>]],[[static _Atomic long foo = 1;++foo;]])
+                   [[$pmix_stdatomic_hdr]],[[static _Atomic long foo = 1;++foo;]])
 
-   PMIX_CC_HELPER([if $CC $1 supports C11 _c11_atomic functions], [pmix_prog_cc_c11_atomic_function],
-                   [[#include <stdatomic.h>]],[[atomic_int acnt = 0; __c11_atomic_fetch_add(&acnt, 1, memory_order_relaxed);]])
+   if test $pmix_prog_cc_c11_helper_atomic_var_available -eq 1; then
+       PMIX_CC_HELPER([if $CC $1 supports C11 _c11_atomic functions], [pmix_prog_cc_c11_atomic_function],
+                   [[$pmix_stdatomic_hdr]],[[atomic_int acnt = 0; _c11_atomic_fetch_add(&acnt, 1, 0);]])
+   elif test $pmix_prog_cc_c11_helper__Atomic_available -eq 1; then
+        PMIX_CC_HELPER([if $CC $1 supports C11 _c11_atomic functions], [pmix_prog_cc_c11_atomic_function],
+                   [[$pmix_stdatomic_hdr]],[[_Atomic long acnt = 0; __c11_atomic_fetch_add(&acnt, 1, 0);]])
+   fi
+
    if test $pmix_prog_cc_c11_atomic_function -eq 1; then
       AC_DEFINE_UNQUOTED([PMIX_HAVE_CLANG_BUILTIN_ATOMIC_C11_FUNC], [$pmix_prog_cc_c11_atomic_function], [Whether we have Clang __c11 atomic functions])
    fi;
@@ -71,8 +84,8 @@ AC_DEFUN([PMIX_PROG_CC_C11_HELPER],[
                    [[#include <stdint.h>]],[[_Static_assert(sizeof(int64_t) == 8, "WTH");]])
 
     PMIX_CC_HELPER([if $CC $1 supports C11 atomic_fetch_xor_explicit], [pmix_prog_cc_c11_helper_atomic_fetch_xor_explicit_available],
-	           [[#include <stdatomic.h>
-#include <stdint.h>]],[[_Atomic uint32_t a; uint32_t b; atomic_fetch_xor_explicit(&a, b, memory_order_relaxed);]])
+	           [[$pmix_stdatomic_hdr
+                    #include <stdint.h>]],[[_Atomic uint32_t a; uint32_t b; atomic_fetch_xor_explicit(&a, b, 0);]])
 
 
     AS_IF([test $pmix_prog_cc_c11_helper__Thread_local_available -eq 1 && test $pmix_prog_cc_c11_helper_atomic_var_available -eq 1 && test $pmix_prog_cc_c11_helper_atomic_fetch_xor_explicit_available -eq 1],

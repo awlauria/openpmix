@@ -110,7 +110,11 @@ static inline void pmix_wait_sync_update(pmix_wait_sync_t *sync,
         /* this is an error path so just use the atomic */
         sync->status = PMIX_ERROR;
         pmix_atomic_wmb ();
+#ifdef __ibmxl__
+        pmix_atomic_swap_32 ((int *) &sync->count, 0);
+#else
         pmix_atomic_swap_32 (&sync->count, 0);
+#endif
     }
     PMIX_WAIT_SYNC_SIGNAL(sync);
 }

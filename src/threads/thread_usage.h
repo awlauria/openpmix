@@ -48,17 +48,33 @@ __pmix_attribute_always_inline__ static __inline__ type pmix_thread_fetch_ ## na
     return pmix_atomic_fetch_ ## name ## _ ## suffix (addr, delta);     \
 }
 
+#if defined(__PGI) || defined(__ibmxl__)
 #define PMIX_THREAD_DEFINE_ATOMIC_COMPARE_EXCHANGE(type, addr_type, suffix)       \
 __pmix_attribute_always_inline__ static __inline__ bool pmix_thread_compare_exchange_strong_ ## suffix (pmix_atomic_ ## addr_type *addr, type *compare, type value) \
 {                                                                       \
-    return pmix_atomic_compare_exchange_strong_ ## suffix (addr, (addr_type *) compare, (addr_type) value); \
+    return pmix_atomic_compare_exchange_strong_ ## suffix ( (type *) addr, compare, value); \
 }
+#else
+#define PMIX_THREAD_DEFINE_ATOMIC_COMPARE_EXCHANGE(type, addr_type, suffix)       \
+__pmix_attribute_always_inline__ static __inline__ bool pmix_thread_compare_exchange_strong_ ## suffix (pmix_atomic_ ## addr_type *addr, type *compare, type value) \
+{                                                                       \
+    return pmix_atomic_compare_exchange_strong_ ## suffix ( addr, (addr_type *) compare,  value); \
+}
+#endif
 
+#if defined(__PGI) || defined(__ibmxl__)
 #define PMIX_THREAD_DEFINE_ATOMIC_SWAP(type, addr_type, suffix)         \
 __pmix_attribute_always_inline__ static __inline__ type pmix_thread_swap_ ## suffix (pmix_atomic_ ## addr_type *ptr, type newvalue) \
-{                                                                       \
+{ \
+    return (type) pmix_atomic_swap_ ## suffix ((addr_type *) ptr, (addr_type) newvalue); \
+}
+#else
+#define PMIX_THREAD_DEFINE_ATOMIC_SWAP(type, addr_type, suffix)         \
+__pmix_attribute_always_inline__ static __inline__ type pmix_thread_swap_ ## suffix (pmix_atomic_ ## addr_type *ptr, type newvalue) \
+{ \
     return (type) pmix_atomic_swap_ ## suffix (ptr, (addr_type) newvalue); \
 }
+#endif
 
 PMIX_THREAD_DEFINE_ATOMIC_OP(int32_t, add, +, 32)
 PMIX_THREAD_DEFINE_ATOMIC_OP(size_t, add, +, size_t)
@@ -69,7 +85,7 @@ PMIX_THREAD_DEFINE_ATOMIC_OP(int32_t, sub, -, 32)
 PMIX_THREAD_DEFINE_ATOMIC_OP(size_t, sub, -, size_t)
 
 PMIX_THREAD_DEFINE_ATOMIC_COMPARE_EXCHANGE(int32_t, int32_t, 32)
-PMIX_THREAD_DEFINE_ATOMIC_COMPARE_EXCHANGE(void *, intptr_t, ptr)
+//PMIX_THREAD_DEFINE_ATOMIC_COMPARE_EXCHANGE(void *, intptr_t, ptr)
 PMIX_THREAD_DEFINE_ATOMIC_SWAP(int32_t, int32_t, 32)
 PMIX_THREAD_DEFINE_ATOMIC_SWAP(void *, intptr_t, ptr)
 

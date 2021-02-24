@@ -102,6 +102,18 @@ static inline void pmix_atomic_rmb (void)
 #define pmix_atomic_swap_ptr(addr, value) atomic_exchange_explicit (addr, value, memory_order_relaxed)
 
 #ifdef PMIX_HAVE_CLANG_BUILTIN_ATOMIC_C11_FUNC
+#if defined(__PGI) || defined(__ibmxl__)
+#define PMIX_ATOMIC_STDC_DEFINE_FETCH_OP(op, bits, type, operator)      \
+    static inline type pmix_atomic_fetch_ ## op ##_## bits (pmix_atomic_ ## type *addr, type value) \
+    {                                                                   \
+        return atomic_fetch_ ## op ## _explicit ((type *)addr, value, memory_order_relaxed); \
+    }                                                                   \
+                                                                        \
+    static inline type pmix_atomic_## op ## _fetch_ ## bits (pmix_atomic_ ## type *addr, type value) \
+    {                                                                   \
+        return atomic_fetch_ ## op ## _explicit ((type *)addr, value, memory_order_relaxed) operator value; \
+    }
+#else
 #define PMIX_ATOMIC_STDC_DEFINE_FETCH_OP(op, bits, type, operator)      \
     static inline type pmix_atomic_fetch_ ## op ##_## bits (pmix_atomic_ ## type *addr, type value) \
     {                                                                   \
@@ -112,6 +124,7 @@ static inline void pmix_atomic_rmb (void)
     {                                                                   \
         return atomic_fetch_ ## op ## _explicit (addr, value, memory_order_relaxed) operator value; \
     }
+#endif
 #else
 #define PMIX_ATOMIC_STDC_DEFINE_FETCH_OP(op, bits, type, operator)      \
     static inline type pmix_atomic_fetch_ ## op ##_## bits (pmix_atomic_ ## type *addr, type value) \
@@ -150,8 +163,11 @@ static inline int32_t pmix_atomic_fetch_min_32 (pmix_atomic_int32_t *addr, int32
         if (old <= value) {
             break;
         }
+#ifndef __ibmxl__
     } while (!pmix_atomic_compare_exchange_strong_32 (addr, &old, value));
-
+#else
+    } while (!pmix_atomic_compare_exchange_strong_32 ((int32_t *) addr, &old, value));
+#endif
     return old;
 }
 
@@ -162,7 +178,11 @@ static inline int32_t pmix_atomic_fetch_max_32 (pmix_atomic_int32_t *addr, int32
         if (old >= value) {
             break;
         }
+#ifndef __ibmxl__
     } while (!pmix_atomic_compare_exchange_strong_32 (addr, &old, value));
+#else
+    } while (!pmix_atomic_compare_exchange_strong_32 ((int32_t *) addr, &old, value));
+#endif
 
     return old;
 }
@@ -174,7 +194,11 @@ static inline int64_t pmix_atomic_fetch_min_64 (pmix_atomic_int64_t *addr, int64
         if (old <= value) {
             break;
         }
+#ifndef __ibmxl__
     } while (!pmix_atomic_compare_exchange_strong_64 (addr, &old, value));
+#else
+    } while (!pmix_atomic_compare_exchange_strong_64 ((int64_t *) addr, &old, value));
+#endif
 
     return old;
 }
@@ -186,7 +210,11 @@ static inline int64_t pmix_atomic_fetch_max_64 (pmix_atomic_int64_t *addr, int64
         if (old >= value) {
             break;
         }
+#ifndef __ibmxl__
     } while (!pmix_atomic_compare_exchange_strong_64 (addr, &old, value));
+#else
+    } while (!pmix_atomic_compare_exchange_strong_64 ((int64_t *) addr, &old, value));
+#endif
 
     return old;
 }
@@ -218,8 +246,9 @@ static inline int64_t pmix_atomic_max_fetch_64 (pmix_atomic_int64_t *addr, int64
 #define PMIX_ATOMIC_LOCK_UNLOCKED false
 #define PMIX_ATOMIC_LOCK_LOCKED true
 
-#define PMIX_ATOMIC_LOCK_INIT ATOMIC_FLAG_INIT
+#define PMIX_ATOMIC_LOCK_INIT {ATOMIC_FLAG_INIT}
 
+#define PMIX_USE_C11_ATOMIC_LOCK 1
 typedef atomic_flag pmix_atomic_lock_t;
 
 /*

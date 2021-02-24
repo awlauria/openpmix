@@ -60,7 +60,11 @@ static void dirpath_destroy(char *path, pmix_cleanup_dir_t *cd,
 static bool dirpath_is_empty(const char *path);
 
 PMIX_EXPORT pmix_lock_t pmix_global_lock = {
+#if !PMIX_USE_C11_ATOMIC_LOCK
     .mutex = PMIX_MUTEX_STATIC_INIT,
+#else
+    .mutex = PMIX_ATOMIC_LOCK_INIT,
+#endif
     .cond = PMIX_CONDITION_STATIC_INIT,
     .active = false
 };

@@ -48,15 +48,51 @@ AC_DEFUN([PMIX_PROG_CC_C11_HELPER],[
 
     pmix_prog_cc_c11_helper_CFLAGS_save=$CFLAGS
     CFLAGS="$CFLAGS $1"
+    PMIX_C_COMPILER_VENDOR([pmix_c_vendor])
 
     PMIX_CC_HELPER([if $CC $1 supports C11 _Thread_local], [pmix_prog_cc_c11_helper__Thread_local_available],
                    [],[[static _Thread_local int  foo = 1;++foo;]])
 
     PMIX_CC_HELPER([if $CC $1 has stdatomic.h], [pmix_prog_cc_c11_helper_atomic_has_stdatomic_h],
                    [[#include <stdatomic.h>]], [])
+    if test $pmix_prog_cc_c11_helper_atomic_has_stdatomic_h -eq 0; then
+        if test "$pmix_cv_c_compiler_vendor" = "ibm"; then
+            CC_SAVE=$CC
+            CC=gcc
+            CFLAGE_SAVE=$CFLAGS
+            CFLAGS="-M"
+            pmix_cv_gcc_has_stdatomic_h=yes
+            stdatomic_include_path=""
+            AC_REQUIRE([AC_PROG_GREP])
+            AC_MSG_CHECKING([if gcc has stdatomic.h])
+            AC_LANG_CONFTEST([AC_LANG_SOURCE([
+                                              #include<stdatomic.h>
+                                              int main() { }
+                                             ]
+                                            )])
+            stdatomic_include_path=`$CC -M conftest.c | $GREP stdatomic.h`
+            if test -z "$stdatomic_include_path"; then
+                AC_MSG_WARN([stdatomic.h cannot be found.])
+            else
+                stdatomic_include_path="${stdatomic_include_path#"${stdatomic_include_path%%[![:space:]]*}"}"
+                stdatomic_include_path=${stdatomic_include_path%stdatomic.h}
+                AC_MSG_RESULT([Adding $stdatomic_include_path to include path.])
+            fi
+            CC=$CC_SAVE
+            CFLAGS="$CFLAGS_SAVE -I$stdatomic_include_path"
+            pmix_prog_cc_c11_helper_CFLAGS_save="$pmix_prog_cc_c11_helper_CFLAGS_save -I$stdatomic_include_path"
+            pmix_prog_cc_c11_helper_atomic_has_stdatomic_h=1
+        else
+            AC_MSG_RESULT([Not $pmix_c_vendor not $pmix_cv_c_compiler_vendor compiler. Not checking for stdatomic.h include])
+        fi
+    fi
+
     pmix_stdatomic_hdr=""
     if test $pmix_prog_cc_c11_helper_atomic_has_stdatomic_h -eq 1; then
-        pmix_stdatomic_hdr="#include<stdatomic.h>"
+	AC_MSG_RESULT([stdatomic.h is available])
+        pmix_stdatomic_hdr="#include <stdatomic.h>"
+    else
+	AC_MSG_RESULT([stdatomic.h is not available])
     fi
 
     PMIX_CC_HELPER([if $CC $1 supports C11 atomic variables], [pmix_prog_cc_c11_helper_atomic_var_available],
@@ -67,7 +103,7 @@ AC_DEFUN([PMIX_PROG_CC_C11_HELPER],[
 
    if test $pmix_prog_cc_c11_helper_atomic_var_available -eq 1; then
        PMIX_CC_HELPER([if $CC $1 supports C11 _c11_atomic functions], [pmix_prog_cc_c11_atomic_function],
-                   [[$pmix_stdatomic_hdr]],[[atomic_int acnt = 0; _c11_atomic_fetch_add(&acnt, 1, 0);]])
+                   [[$pmix_stdatomic_hdr]],[[atomic_int acnt = 0; __c11_atomic_fetch_add(&acnt, 1, 0);]])
    elif test $pmix_prog_cc_c11_helper__Atomic_available -eq 1; then
         PMIX_CC_HELPER([if $CC $1 supports C11 _c11_atomic functions], [pmix_prog_cc_c11_atomic_function],
                    [[$pmix_stdatomic_hdr]],[[_Atomic long acnt = 0; __c11_atomic_fetch_add(&acnt, 1, 0);]])
@@ -83,12 +119,7 @@ AC_DEFUN([PMIX_PROG_CC_C11_HELPER],[
     PMIX_CC_HELPER([if $CC $1 supports C11 _Static_assert], [pmix_prog_cc_c11_helper__static_assert_available],
                    [[#include <stdint.h>]],[[_Static_assert(sizeof(int64_t) == 8, "WTH");]])
 
-    PMIX_CC_HELPER([if $CC $1 supports C11 atomic_fetch_xor_explicit], [pmix_prog_cc_c11_helper_atomic_fetch_xor_explicit_available],
-	           [[$pmix_stdatomic_hdr
-                    #include <stdint.h>]],[[_Atomic uint32_t a; uint32_t b; atomic_fetch_xor_explicit(&a, b, 0);]])
-
-
-    AS_IF([test $pmix_prog_cc_c11_helper__Thread_local_available -eq 1 && test $pmix_prog_cc_c11_helper_atomic_var_available -eq 1 && test $pmix_prog_cc_c11_helper_atomic_fetch_xor_explicit_available -eq 1],
+    AS_IF([test $pmix_prog_cc_c11_helper__Thread_local_available -eq 1 && test $pmix_prog_cc_c11_helper_atomic_var_available -eq 1],
           [$2],
           [$3])
 
@@ -178,7 +209,7 @@ AC_DEFUN([PMIX_SETUP_CC],[
     AC_REQUIRE([_PMIX_PROG_CC])
     AC_REQUIRE([AM_PROG_CC_C_O])
 
-    PMIX_VAR_SCOPE_PUSH([pmix_prog_cc_c11_helper__Thread_local_available pmix_prog_cc_c11_helper_atomic_var_available pmix_prog_cc_c11_helper__Atomic_available pmix_prog_cc_c11_helper__static_assert_available pmix_prog_cc_c11_helper__Generic_available pmix_prog_cc__thread_available pmix_prog_cc_c11_helper_atomic_fetch_xor_explicit_available pmix_prog_cc_c11_atomic_function])
+    PMIX_VAR_SCOPE_PUSH([pmix_prog_cc_c11_helper__Thread_local_available pmix_prog_cc_c11_helper_atomic_var_available pmix_prog_cc_c11_helper__Atomic_available pmix_prog_cc_c11_helper__static_assert_available pmix_prog_cc_c11_helper__Generic_available pmix_prog_cc__thread_availabl pmix_prog_cc_c11_atomic_function])
 
     # AC_PROG_CC_C99 changes CC (instead of CFLAGS) so save CC (without c99
     # flags) for use in our wrappers.
@@ -188,10 +219,11 @@ AC_DEFUN([PMIX_SETUP_CC],[
     PMIX_PROG_CC_C11
     PMIX_CHECK_CC_IQUOTE
 
+    PMIX_C_COMPILER_VENDOR([pmix_c_vendor])
     if test $pmix_cv_c11_supported = no ; then
         # It is not currently an error if C11 support is not available. Uncomment the
         # following lines and update the warning when we require a C11 compiler.
-        # AC_MSG_WARNING([Open MPI requires a C11 (or newer) compiler])
+        # AC_MSG_WARN([Open MPI requires a C11 (or newer) compiler])
         # AC_MSG_ERROR([Aborting.])
         # From Open MPI 1.7 on we require a C99 compiant compiler
         AC_PROG_CC_C99
@@ -234,7 +266,6 @@ AC_DEFUN([PMIX_SETUP_CC],[
     AC_DEFINE_UNQUOTED([PMIX_C_HAVE___THREAD], [$pmix_prog_cc__thread_available],
                        [Whether C compiler supports __thread])
 
-    PMIX_C_COMPILER_VENDOR([pmix_c_vendor])
 
     # Check for standard headers, needed here because needed before
     # the types checks.
@@ -299,16 +330,20 @@ AC_DEFUN([PMIX_SETUP_CC],[
     PMIX_CFLAGS_BEFORE_PICKY="$CFLAGS"
 
     if test $WANT_PICKY_COMPILER -eq 1; then
-        _PMIX_CHECK_SPECIFIC_CFLAGS(-Wundef, Wundef)
+        if test "$pmix_cv_c_compiler_vendor" != "portland group"; then
+            _PMIX_CHECK_SPECIFIC_CFLAGS(-Wundef, Wundef)
+            _PMIX_CHECK_SPECIFIC_CFLAGS(-Wmissing-prototypes, Wmissing_prototypes)
+            _PMIX_CHECK_SPECIFIC_CFLAGS(-Wstrict-prototypes, Wstrict_prototypes)
+        fi
         _PMIX_CHECK_SPECIFIC_CFLAGS(-Wno-long-long, Wno_long_long, int main() { long long x; })
         _PMIX_CHECK_SPECIFIC_CFLAGS(-Wsign-compare, Wsign_compare)
-        _PMIX_CHECK_SPECIFIC_CFLAGS(-Wmissing-prototypes, Wmissing_prototypes)
-        _PMIX_CHECK_SPECIFIC_CFLAGS(-Wstrict-prototypes, Wstrict_prototypes)
         _PMIX_CHECK_SPECIFIC_CFLAGS(-Wcomment, Wcomment)
         _PMIX_CHECK_SPECIFIC_CFLAGS(-Werror-implicit-function-declaration, Werror_implicit_function_declaration)
         _PMIX_CHECK_SPECIFIC_CFLAGS(-Wno-long-double, Wno_long_double, int main() { long double x; })
         _PMIX_CHECK_SPECIFIC_CFLAGS(-fno-strict-aliasing, fno_strict_aliasing, int main () { int x; })
-        _PMIX_CHECK_SPECIFIC_CFLAGS(-pedantic, pedantic)
+        if test "$pmix_cv_c_compiler_vendor" != "ibm" && test "$pmix_cv_c_compiler_vendor" != "portland group"; then
+            _PMIX_CHECK_SPECIFIC_CFLAGS(-pedantic, pedantic)
+        fi
         _PMIX_CHECK_SPECIFIC_CFLAGS(-Wall, Wall)
     fi
 

@@ -14,11 +14,7 @@
  */
 #include "wait_sync.h"
 
-#if PMIX_USE_C11_ATOMIC_LOCK
-static pmix_mutex_t wait_sync_lock = PMIX_ATOMIC_LOCK_INIT;
-#else
 static pmix_mutex_t wait_sync_lock = PMIX_MUTEX_STATIC_INIT;
-#endif
 static pmix_wait_sync_t* wait_sync_list = NULL;
 
 #define PMIX_WAIT_SYNC_PASS_OWNERSHIP(who)             \

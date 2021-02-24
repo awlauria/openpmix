@@ -246,10 +246,16 @@ static inline int64_t pmix_atomic_max_fetch_64 (pmix_atomic_int64_t *addr, int64
 #define PMIX_ATOMIC_LOCK_UNLOCKED false
 #define PMIX_ATOMIC_LOCK_LOCKED true
 
-#define PMIX_ATOMIC_LOCK_INIT {ATOMIC_FLAG_INIT}
 
 #define PMIX_USE_C11_ATOMIC_LOCK 1
+#if defined(__ibmxl__)
+typedef _Atomic bool pmix_atomic_lock_t;
+#define PMIX_ATOMIC_LOCK_INIT 0
+#else
 typedef atomic_flag pmix_atomic_lock_t;
+#define PMIX_ATOMIC_LOCK_INIT ATOMIC_FLAG_INIT
+#endif
+
 
 /*
  * Lock initialization function. It set the lock to UNLOCKED.

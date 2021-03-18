@@ -52,11 +52,11 @@ extern FILE *file;
 #define STRIPPED_FILE_NAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #define TEST_OUTPUT(x) {                            \
-    struct timeval tv;                              \
-    gettimeofday(&tv, NULL);                        \
-    double ts = tv.tv_sec + 1E-6*tv.tv_usec;        \
+    struct timeval tv_output;                       \
+    gettimeofday(&tv_output, NULL);                 \
+    double ts_output = tv_output.tv_sec + 1E-6*tv_output.tv_usec; \
     fprintf(file,"==%d== [%lf] %s:%s: %s\n",        \
-            getpid(), ts,STRIPPED_FILE_NAME,        \
+            getpid(), ts_output,STRIPPED_FILE_NAME, \
             __func__,                               \
             pmix_test_output_prepare x );           \
     fflush(file);                                   \
@@ -145,7 +145,7 @@ typedef struct {
     uint32_t lsize;
 } test_params;
 
-extern test_params params;
+extern test_params pmix_global_test_params;
 
 #define INIT_TEST_PARAMS(params) do { \
     params.nprocs = 1;                \
@@ -251,39 +251,39 @@ typedef struct {
 } while (0)
 
 #define PUT(dtype, data, flag, fence_num, ind, use_same_keys) do {                                                  \
-    char key[50];                                                                                                   \
-    pmix_value_t value;                                                                                             \
-    SET_KEY(key, fence_num, ind, use_same_keys);                                                                    \
-    PMIX_VAL_SET(&value, dtype, data);                                                                              \
-    TEST_VERBOSE(("%s:%d put key %s", my_nspace, my_rank, key));                                                  \
-    if (PMIX_SUCCESS != (rc = PMIx_Put(flag, key, &value))) {                                                       \
-        TEST_ERROR(("%s:%d: PMIx_Put key %s failed: %s", my_nspace, my_rank, key, PMIx_Error_string(rc)));                             \
+    char put_key[50];                                                                                               \
+    pmix_value_t put_value;                                                                                         \
+    SET_KEY(put_key, fence_num, ind, use_same_keys);                                                                \
+    PMIX_VAL_SET(&put_value, dtype, data);                                                                          \
+    TEST_VERBOSE(("%s:%d put key %s", my_nspace, my_rank, put_key));                                                \
+    if (PMIX_SUCCESS != (rc = PMIx_Put(flag, put_key, &put_value))) {                                               \
+        TEST_ERROR(("%s:%d: PMIx_Put key %s failed: %s", my_nspace, my_rank, put_key, PMIx_Error_string(rc)));      \
     }                                                                                                               \
-    PMIX_VALUE_DESTRUCT(&value);                                                                                    \
+    PMIX_VALUE_DESTRUCT(&put_value);                                                                                \
 } while (0)
 
 #define GET(dtype, data, ns, r, fence_num, ind, use_same_keys, blocking, ok_notfnd) do {                        \
-    char key[50];                                                                                                   \
-    pmix_value_t *val;                                                                                              \
+    char get_key[50];                                                                                               \
+    pmix_value_t *get_val;                                                                                          \
     get_cbdata cbdata;                                                                                              \
     cbdata.status = PMIX_SUCCESS;                                                                                   \
     pmix_proc_t foobar; \
-    SET_KEY(key, fence_num, ind, use_same_keys);                                                                    \
+    SET_KEY(get_key, fence_num, ind, use_same_keys);                                                                \
     PMIX_LOAD_PROCID(&foobar, ns, r); \
-    TEST_VERBOSE(("%s:%d want to get from %s:%d key %s", my_nspace, my_rank, ns, r, key));                          \
+    TEST_VERBOSE(("%s:%d want to get from %s:%d key %s", my_nspace, my_rank, ns, r, get_key));                      \
     if (blocking) {                                                                                                 \
-        if (PMIX_SUCCESS != (rc = PMIx_Get(&foobar, key, NULL, 0, &val))) {                                         \
+        if (PMIX_SUCCESS != (rc = PMIx_Get(&foobar, get_key, NULL, 0, &get_val))) {                                 \
             if( !( (rc == PMIX_ERR_NOT_FOUND || rc == PMIX_ERR_PROC_ENTRY_NOT_FOUND) && ok_notfnd ) ){                                                       \
-                TEST_ERROR(("%s:%d: PMIx_Get failed: %s from %s:%d, key %s", my_nspace, my_rank, PMIx_Error_string(rc), ns, r, key));  \
+                TEST_ERROR(("%s:%d: PMIx_Get failed: %s from %s:%d, key %s", my_nspace, my_rank, PMIx_Error_string(rc), ns, r, get_key));  \
             }                                                                                                       \
         }                                                                                                           \
     } else {                                                                                                        \
         int count;                                                                                                  \
         cbdata.in_progress = 1;                                                                                     \
-        PMIX_VALUE_CREATE(val, 1);                                                                                  \
-        cbdata.kv = val;                                                                                            \
-        if (PMIX_SUCCESS != (rc = PMIx_Get_nb(&foobar, key, NULL, 0, get_cb, (void*)&cbdata))) {                    \
-            TEST_VERBOSE(("%s:%d: PMIx_Get_nb failed: %s from %s:%d, key=%s", my_nspace, my_rank, PMIx_Error_string(rc), ns, r, key)); \
+        PMIX_VALUE_CREATE(get_val, 1);                                                                              \
+        cbdata.kv = get_val;                                                                                        \
+        if (PMIX_SUCCESS != (rc = PMIx_Get_nb(&foobar, get_key, NULL, 0, get_cb, (void*)&cbdata))) {                \
+            TEST_VERBOSE(("%s:%d: PMIx_Get_nb failed: %s from %s:%d, key=%s", my_nspace, my_rank, PMIx_Error_string(rc), ns, r, get_key)); \
         } else {                                                                                                    \
             count = 0;                                                                                              \
             while(cbdata.in_progress){                                                                              \
@@ -301,36 +301,36 @@ typedef struct {
         if( PMIX_SUCCESS != cbdata.status ){                                                                        \
             if( !( (cbdata.status == PMIX_ERR_NOT_FOUND || cbdata.status == PMIX_ERR_PROC_ENTRY_NOT_FOUND) && ok_notfnd ) ){ \
                 TEST_ERROR(("%s:%d: PMIx_Get_nb failed: %s from %s:%d, key=%s",                                     \
-                            my_nspace, my_rank, PMIx_Error_string(rc), my_nspace, r, key));                                            \
+                            my_nspace, my_rank, PMIx_Error_string(rc), my_nspace, r, get_key));                     \
             }                                                                                                       \
-        } else if (NULL == val) {                                                                                   \
+        } else if (NULL == get_val) {                                                                               \
             TEST_VERBOSE(("%s:%d: PMIx_Get returned NULL value", my_nspace, my_rank));                              \
         }                                                                                                           \
-        else if (val->type != PMIX_VAL_TYPE_ ## dtype || PMIX_VAL_CMP(dtype, PMIX_VAL_FIELD_ ## dtype((val)), data)) {  \
-            TEST_ERROR(("%s:%u: from %s:%d Key %s value or type mismatch,"                                        \
+        else if (get_val->type != PMIX_VAL_TYPE_ ## dtype || PMIX_VAL_CMP(dtype, PMIX_VAL_FIELD_ ## dtype((get_val)), data)) {  \
+            TEST_ERROR(("%s:%u: from %s:%d Key %s value or type mismatch,"                                          \
                         " want type %d get type %d",                                                                \
-                        my_nspace, my_rank, ns, r, key, PMIX_VAL_TYPE_ ## dtype, val->type));                    \
+                        my_nspace, my_rank, ns, r, get_key, PMIX_VAL_TYPE_ ## dtype, get_val->type));               \
         }                                                                                                           \
     }                                                                                                               \
     if (PMIX_SUCCESS == rc) {                                                                                       \
-        TEST_VERBOSE(("%s:%d: GET OF %s from %s:%d SUCCEEDED", my_nspace, my_rank, key, ns, r));                 \
-        PMIX_VALUE_RELEASE(val);                                                                                    \
+        TEST_VERBOSE(("%s:%d: GET OF %s from %s:%d SUCCEEDED", my_nspace, my_rank, get_key, ns, r));                \
+        PMIX_VALUE_RELEASE(get_val);                                                                                \
     }                                                                                                               \
 } while (0)
 
 #define FENCE(blocking, data_ex, pcs, nprocs) do {                              \
     if( blocking ){                                                             \
-        pmix_info_t *info = NULL;                                               \
-        size_t ninfo = 0;                                                       \
+        pmix_info_t *fence_info = NULL;                                         \
+        size_t fence_ninfo = 0;                                                 \
         if (data_ex) {                                                          \
-            bool value = 1;                                            \
-            PMIX_INFO_CREATE(info, 1);                                          \
-            (void)strncpy(info->key, PMIX_COLLECT_DATA, PMIX_MAX_KEYLEN);       \
-            pmix_value_load(&info->value, &value, PMIX_BOOL);                   \
-            ninfo = 1;                                                          \
+            bool value_tmp = 1;                                                 \
+            PMIX_INFO_CREATE(fence_info, 1);                                    \
+            (void)strncpy(fence_info->key, PMIX_COLLECT_DATA, PMIX_MAX_KEYLEN); \
+            pmix_value_load(&fence_info->value, &value_tmp, PMIX_BOOL);         \
+            fence_ninfo = 1;                                                    \
         }                                                                       \
-        rc = PMIx_Fence(pcs, nprocs, info, ninfo);                              \
-        PMIX_INFO_FREE(info, ninfo);                                            \
+        rc = PMIx_Fence(pcs, nprocs, fence_info, fence_ninfo);                  \
+        PMIX_INFO_FREE(fence_info, fence_ninfo);                                \
     } else {                                                                    \
         int in_progress = 1, count;                                             \
         rc = PMIx_Fence_nb(pcs, nprocs, NULL, 0, release_cb, &in_progress);     \

@@ -36,12 +36,8 @@ BEGIN_C_DECLS
  */
 
 extern bool pmix_info_pretty;
-extern pmix_cmd_line_t *pmix_info_cmd_line;
 
 extern const char *pmix_info_type_base;
-
-extern pmix_pointer_array_t mca_types;
-
 
 /*
  * Parameter/configuration-related functions

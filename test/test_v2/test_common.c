@@ -27,7 +27,7 @@
 #include <assert.h>
 
 int pmix_test_verbose = 0;
-test_params params;
+test_params pmix_global_test_params;
 
 FILE *pmixt_outfile;
 

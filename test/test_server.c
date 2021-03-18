@@ -142,7 +142,6 @@ static void set_namespace(int local_size, int univ_size,
     char *regex, *ppn, *tmp;
     char *ranks = NULL, **nodes = NULL;
     char **rks=NULL;
-    int i;
     int rc;
 
     PMIX_INFO_CREATE(info, ninfo);
@@ -168,11 +167,11 @@ static void set_namespace(int local_size, int univ_size,
     info[3].value.data.string = strdup(ranks);
 
     /* assemble the node and proc map info */
-    if (1 == params.nservers) {
+    if (1 == pmix_global_test_params.nservers) {
         pmix_argv_append_nosize(&nodes, my_server_info->hostname);
     } else {
         char hostname[PMIX_MAXHOSTNAMELEN];
-        for (i = 0; i < params.nservers; i++) {
+        for (int i = 0; i < pmix_global_test_params.nservers; i++) {
             snprintf(hostname, PMIX_MAXHOSTNAMELEN, "node%d", i);
             pmix_argv_append_nosize(&nodes, hostname);
         }
@@ -193,12 +192,12 @@ static void set_namespace(int local_size, int univ_size,
     /* generate the global proc map - if we have two
      * servers, then the procs not on this server must
      * be on the other */
-    if (2 == params.nservers) {
+    if (2 == pmix_global_test_params.nservers) {
         pmix_argv_append_nosize(&rks, ranks);
         free(ranks);
         nodes = NULL;
         if (0 == my_server_id) {
-            for (i=base_rank+local_size; i < univ_size; i++) {
+            for (int i=base_rank+local_size; i < univ_size; i++) {
                 asprintf(&ppn, "%d", i);
                 pmix_argv_append_nosize(&nodes, ppn);
                 free(ppn);
@@ -207,7 +206,7 @@ static void set_namespace(int local_size, int univ_size,
             pmix_argv_append_nosize(&rks, ppn);
             free(ppn);
         } else {
-            for (i=0; i < base_rank; i++) {
+            for (int i=0; i < base_rank; i++) {
                 asprintf(&ppn, "%d", i);
                 pmix_argv_append_nosize(&nodes, ppn);
                 free(ppn);
@@ -242,7 +241,6 @@ static void set_namespace(int local_size, int univ_size,
 static void server_unpack_procs(char *buf, size_t size)
 {
     char *ptr = buf;
-    size_t i;
     size_t ns_count;
     char *nspace;
 
@@ -250,7 +248,7 @@ static void server_unpack_procs(char *buf, size_t size)
         memcpy (&ns_count, ptr, sizeof(size_t));
         ptr += sizeof(size_t);
 
-        for (i = 0; i < ns_count; i++) {
+        for (size_t i = 0; i < ns_count; i++) {
             server_nspace_t *tmp, *ns_item = NULL;
             size_t ltasks, ntasks;
             int server_id;
@@ -284,8 +282,7 @@ static void server_unpack_procs(char *buf, size_t size)
             } else {
                 assert(ns_item->ntasks == ntasks);
             }
-            size_t i;
-            for (i = 0; i < ltasks; i++) {
+            for (size_t j = 0; j < ltasks; j++) {
                 int rank;
                 memcpy (&rank, ptr, sizeof(int));
                 ptr += sizeof(int);

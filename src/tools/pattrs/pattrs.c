@@ -112,12 +112,12 @@ static void notification_fn(size_t evhdlr_registration_id,
                             const pmix_proc_t *source,
                             pmix_info_t info[], size_t ninfo,
                             pmix_info_t results[], size_t nresults,
-                            pmix_event_notification_cbfunc_fn_t cbfunc,
+                            pmix_event_notification_cbfunc_fn_t cbfunc_in,
                             void *cbdata)
 {
     /* this example doesn't do anything with default events */
-    if (NULL != cbfunc) {
-        cbfunc(PMIX_EVENT_ACTION_COMPLETE, NULL, 0, NULL, NULL, cbdata);
+    if (NULL != cbfunc_in) {
+        cbfunc_in(PMIX_EVENT_ACTION_COMPLETE, NULL, 0, NULL, NULL, cbdata);
     }
 }
 

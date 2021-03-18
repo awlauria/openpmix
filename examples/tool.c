@@ -77,7 +77,7 @@ static void release_fn(size_t evhdlr_registration_id,
                        const pmix_proc_t *source,
                        pmix_info_t info[], size_t ninfo,
                        pmix_info_t results[], size_t nresults,
-                       pmix_event_notification_cbfunc_fn_t cbfunc,
+                       pmix_event_notification_cbfunc_fn_t cbfunc_in,
                        void *cbdata)
 {
     myrel_t *lock;
@@ -104,8 +104,8 @@ static void release_fn(size_t evhdlr_registration_id,
     if (NULL == lock) {
         fprintf(stderr, "LOCK WASN'T RETURNED IN RELEASE CALLBACK\n");
         /* let the event handler progress */
-        if (NULL != cbfunc) {
-            cbfunc(PMIX_SUCCESS, NULL, 0, NULL, NULL, cbdata);
+        if (NULL != cbfunc_in) {
+            cbfunc_in(PMIX_SUCCESS, NULL, 0, NULL, NULL, cbdata);
         }
         return;
     }
@@ -121,8 +121,8 @@ static void release_fn(size_t evhdlr_registration_id,
     DEBUG_WAKEUP_THREAD(&lock->lock);
 
     /* tell the event handler state machine that we are the last step */
-    if (NULL != cbfunc) {
-        cbfunc(PMIX_EVENT_ACTION_COMPLETE, NULL, 0, NULL, NULL, cbdata);
+    if (NULL != cbfunc_in) {
+        cbfunc_in(PMIX_EVENT_ACTION_COMPLETE, NULL, 0, NULL, NULL, cbdata);
     }
     return;
 }

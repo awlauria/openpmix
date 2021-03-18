@@ -80,7 +80,7 @@ typedef struct {
 
 static int attach_to_running_job(char *nspace);
 static mylock_t waiting_for_debugger;
-static pmix_proc_t myproc;
+static pmix_proc_t myproc_global;
 
 /* this is a callback function for the PMIx_Query
  * API. The query will callback with a status indicating
@@ -134,12 +134,12 @@ static void notification_fn(size_t evhdlr_registration_id,
                             const pmix_proc_t *source,
                             pmix_info_t info[], size_t ninfo,
                             pmix_info_t results[], size_t nresults,
-                            pmix_event_notification_cbfunc_fn_t cbfunc,
+                            pmix_event_notification_cbfunc_fn_t cbfunc_in,
                             void *cbdata)
 {
     /* this example doesn't do anything with default events */
-    if (NULL != cbfunc) {
-        cbfunc(PMIX_EVENT_ACTION_COMPLETE, NULL, 0, NULL, NULL, cbdata);
+    if (NULL != cbfunc_in) {
+        cbfunc_in(PMIX_EVENT_ACTION_COMPLETE, NULL, 0, NULL, NULL, cbdata);
     }
 }
 
@@ -155,12 +155,12 @@ static void release_fn(size_t evhdlr_registration_id,
                        const pmix_proc_t *source,
                        pmix_info_t info[], size_t ninfo,
                        pmix_info_t results[], size_t nresults,
-                       pmix_event_notification_cbfunc_fn_t cbfunc,
+                       pmix_event_notification_cbfunc_fn_t cbfunc_in,
                        void *cbdata)
 {
     /* tell the event handler state machine that we are the last step */
-    if (NULL != cbfunc) {
-        cbfunc(PMIX_EVENT_ACTION_COMPLETE, NULL, 0, NULL, NULL, cbdata);
+    if (NULL != cbfunc_in) {
+        cbfunc_in(PMIX_EVENT_ACTION_COMPLETE, NULL, 0, NULL, NULL, cbdata);
     }
     /* flag that the debugger is complete so we can exit */
     DEBUG_WAKEUP_THREAD(&waiting_for_debugger);
@@ -181,7 +181,7 @@ static void evhandler_reg_callbk(pmix_status_t status,
 
     if (PMIX_SUCCESS != status) {
         fprintf(stderr, "Client %s:%d EVENT HANDLER REGISTRATION FAILED WITH STATUS %d, ref=%lu\n",
-                   myproc.nspace, myproc.rank, status, (unsigned long)evhandler_ref);
+                   myproc_global.nspace, myproc_global.rank, status, (unsigned long)evhandler_ref);
     }
     lock->status = status;
     DEBUG_WAKEUP_THREAD(lock);
@@ -278,13 +278,13 @@ int main(int argc, char **argv)
     PMIX_INFO_CREATE(info, 1);
     PMIX_INFO_LOAD(&info[0], PMIX_CONNECT_SYSTEM_FIRST, NULL, PMIX_BOOL);
     /* init as a tool */
-    if (PMIX_SUCCESS != (rc = PMIx_tool_init(&myproc, info, ninfo))) {
+    if (PMIX_SUCCESS != (rc = PMIx_tool_init(&myproc_global, info, ninfo))) {
         fprintf(stderr, "PMIx_tool_init failed: %d\n", rc);
         exit(rc);
     }
     PMIX_INFO_FREE(info, ninfo);
 
-    fprintf(stderr, "Tool ns %s rank %d: Running\n", myproc.nspace, myproc.rank);
+    fprintf(stderr, "Tool ns %s rank %d: Running\n", myproc_global.nspace, myproc_global.rank);
 
     /* register a default event handler */
     DEBUG_CONSTRUCT_LOCK(&mylock);
